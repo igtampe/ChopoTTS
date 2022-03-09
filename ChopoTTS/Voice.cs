@@ -104,7 +104,7 @@ namespace Igtampe.ChopoTTS {
         /// <summary>Speaks out the provided string with this voice's graphemes, with the specified display option, and a 125ms dellay between each grapheme</summary>
         /// <param name="Something">thing to say</param>
         /// <param name="display">Whether or not to display the text as its said</param>
-        public void Say(string Something,bool display) { Say(Something,display,125); }
+        public void Say(string Something, bool display) => Say(Something, display, 125);
 
         /// <summary>Speaks out the provided string with this voice's graphemes, with the specified display option, and delay between each grapheme</summary>
         /// <param name="Something">thing to say</param>
@@ -115,6 +115,8 @@ namespace Igtampe.ChopoTTS {
             if(File.Exists(Something)) { Something = File.ReadAllText(Something); }
 
             Something = Something.ToLower();
+
+            Word W = null;
 
             while(!string.IsNullOrWhiteSpace(Something)) {
 
@@ -130,20 +132,29 @@ namespace Igtampe.ChopoTTS {
                 if(display) { Console.Write(PotentialGrapheme); }
 
                 //If we have a match, then say it
-                if(Graphemes.ContainsKey(PotentialGrapheme)) {PlayPhoneme(PotentialGrapheme, Delay); }
+                if(Graphemes.ContainsKey(PotentialGrapheme)) {
+                    if (W == null) { W = new Word(); }
+                    W.AddGrapheme(Graphemes[PotentialGrapheme]);
+                    //PlayPhoneme(PotentialGrapheme, Delay); 
+                }
 
                 //Special cases
                 switch(PotentialGrapheme) {
                     case ".":
                     case "?":
                     case "!":
+                        if (W != null) { SayWord(W); }
+                        W = null;
                         Thread.Sleep(1000);
                         break;
                     case ",":
+                        if (W != null) { SayWord(W); }
+                        W = null;
                         Thread.Sleep(500);
                         break;
                     case " ":
-                        Thread.Sleep(100);
+                        if (W != null) { SayWord(W); }
+                        W = null;
                         break;
                     case "1":
                         Say("won",false) ;
@@ -183,7 +194,8 @@ namespace Igtampe.ChopoTTS {
                 //Remove the bit of the text we're supposed to say that we've already said
                 Something = Something.Remove(0,PotentialGrapheme.Length);
             }
-
+            
+            if (W != null) { SayWord(W); }
         }
 
         /// <summary>Plays one phoneme out of the set of graphemes for this voice.</summary>
@@ -195,5 +207,10 @@ namespace Igtampe.ChopoTTS {
             Thread.Sleep(Delay);
         }
 
+        public void SayWord(Word W) {
+            using (SoundPlayer S = new SoundPlayer { Stream = new MemoryStream(W.GenerateWave()) }) {
+                S.PlaySync();
+            }
+        }
     }
 }
